@@ -1,0 +1,7 @@
+*.o
+*.dol
+*.elf
+*.bat
+build
+
+
