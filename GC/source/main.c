@@ -116,7 +116,9 @@ static void Initialise (void)
 
 #define GECKO_CHANNEL 1
 #define PC_READY 0x80
+#define PC_OK    0x81
 #define GC_READY 0x88
+#define GC_OK    0x89
 
 unsigned int convert_int(unsigned int in)
 {
@@ -155,14 +157,23 @@ int main ()
 
 	usb_flush(GECKO_CHANNEL);
 	
-	printf("\nWaiting for connection via USB-Gecko in Slot B ...\n");
-	while(data != PC_READY) {
+	printf("\nSending ready\n");
+	data = GC_READY;
+	usb_sendbuffer_safe(GECKO_CHANNEL,&data,1);
+
+	printf("Waiting for connection via USB-Gecko in Slot B ...\n");
+	while((data != PC_READY) && (data != PC_OK)) {
 		usb_recvbuffer_safe(GECKO_CHANNEL,&data,1);
 	}
 	
-	printf("Respond with ready\n");
-	data = GC_READY;
-	usb_sendbuffer_safe(GECKO_CHANNEL,&data,1);
+	if(data == PC_READY)
+	{
+		printf("Respond with OK\n");
+		// Sometimes the PC can fail to receive the byte, this helps
+		usleep(100000);
+		data = GC_OK;
+		usb_sendbuffer_safe(GECKO_CHANNEL,&data,1);
+	}
 	
 	printf("Getting DOL info...\n");
 	usb_recvbuffer_safe(GECKO_CHANNEL,&size,4);
