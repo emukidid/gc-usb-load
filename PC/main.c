@@ -34,7 +34,10 @@
 #define O_BINARY 0
 #endif
 
-unsigned char cmd_send = 0x80;
+unsigned char cmd_ready = 0x80;
+unsigned char cmd_ok = 0x81;
+unsigned char gc_ready = 0x88;
+unsigned char gc_ok = 0x89;
 
 const char *envvar = "USBGECKODEVICE";
 
@@ -48,21 +51,14 @@ char *default_tty = "/dev/ttyUSB0";
 char *default_tty = NULL;
 #endif
 
-void wait_for_ack () {
-        unsigned char ack;
-        if (gecko_read (&ack, 1))
-                fprintf (stderr, "\nerror receiving the ack\n");
-        else if (ack != 0x08)
-                fprintf (stderr, "\nunknown ack (0x%02x)\n", ack);
-}
-
 int main (int argc, char **argv) {
         int fd;
         struct stat st;
         char *tty;
         unsigned int size;
-        unsigned char *buf, *p;
+        unsigned char *buf, *p, ack;
         off_t fsize, block;
+        int ret;
 
         printf ("USB-Load 1.0 by emu_kidid\nUpload DOL files to a GameCube via USB-Gecko\n"
                 "Based on geckoload code by dhewg\n\n");
@@ -133,15 +129,30 @@ int main (int argc, char **argv) {
                 exit (EXIT_FAILURE);
         }
 
-        printf ("sending upload request\n");
-        if (gecko_write (&cmd_send, 1)) {
+        printf ("sending ready\n");
+        if (gecko_write (&cmd_ready, 1)) {
                 free (buf);
                 gecko_close ();
                 exit (EXIT_FAILURE);
         }
 
         printf ("awaiting upload ack\n");
-        wait_for_ack ();
+        ret = gecko_read (&ack, 1);
+        if (ret || ((ack != gc_ready) && (ack != gc_ok))) {
+                free (buf);
+                gecko_close ();
+                fprintf (stderr, "error receiving ack\n");
+                exit (EXIT_FAILURE);
+        }
+
+        if (ack == gc_ready) {
+                printf ("sending ok\n");
+                if (gecko_write (&cmd_ok, 1)) {
+                        free (buf);
+                        gecko_close ();
+                        exit (EXIT_FAILURE);
+                }
+        }
 
         size = (unsigned int)fsize;
 
