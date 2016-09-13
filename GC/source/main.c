@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <gccore.h>		/*** Wrapper to include common libogc headers ***/
 #include <ogcsys.h>		/*** Needed for console support ***/
-#include <ogc/dvd.h>	
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,6 +37,22 @@ u32 *xfb[2] = { NULL, NULL };    /*** Framebuffers ***/
 int whichfb = 0;        /*** Frame buffer toggle ***/
 void ProperScanPADS(){
 	PAD_ScanPads();
+}
+
+volatile unsigned long* dvd = (volatile unsigned long*)0xCC006000;
+
+void dvd_motor_off()
+{
+	dvd[0] = 0x2E;
+	dvd[1] = 0;
+
+	dvd[2] = 0xe3000000;
+	dvd[3] = 0;
+	dvd[4] = 0;
+	dvd[5] = 0;
+	dvd[6] = 0;
+	dvd[7] = 1; // enable reading!
+	while (dvd[7] & 1);
 }
 
 /****************************************************************************
@@ -139,8 +154,8 @@ unsigned int convert_int(unsigned int in)
 ****************************************************************************/
 int main ()
 {
+	dvd_motor_off();
 	Initialise();
-	DVD_Init();
 	AR_Init(NULL, 0); /*** No stack - we need it all ***/
   
 	*(volatile unsigned long*)0xcc00643c = 0x00000000; //allow 32mhz exi bus
